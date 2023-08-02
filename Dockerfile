@@ -9,8 +9,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Install miniconda
-ARG MINIFORGE_NAME=Miniforge3
-ARG MINIFORGE_VERSION=23.1.0-1
+ARG MINIFORGE_NAME=Mambaforge
+ARG MINIFORGE_VERSION=23.1.0-4
 ARG TARGETPLATFORM
 
 ENV CONDA_DIR=/opt/conda
@@ -54,7 +54,7 @@ COPY environment.yml /opt/environment.yml
 RUN conda env create -f /opt/environment.yml
 RUN conda init zsh
 
-COPY edf2asc /opt/edf2asc
+COPY edf2asc /usr/local/bin/edf2asc
 
 COPY ./bauer /opt/bauer
 RUN pip install -e /opt/bauer
