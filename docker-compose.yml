@@ -1,0 +1,12 @@
+version: '3'
+
+services:
+  riskeye:
+    entrypoint: zsh
+    build: .
+    volumes:
+      - /data/ds-riskeye:/data
+      - ./environment.yml:/opt/environment.yml
+      - ./riskeye:/riskeye
+      - ./bauer:/bauer
+    tty: true

@@ -1,0 +1,3 @@
+[submodule "bauer"]
+	path = bauer
+	url = git@github.com:ruffgroup/bauer.git

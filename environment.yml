@@ -1,0 +1,17 @@
+name: riskeye
+channels:
+   - conda-forge
+dependencies:
+   - python=3.10
+   - notebook
+   - pip
+   - pymc
+   - numpy
+   - ipython
+   - matplotlib
+   - scipy
+   - pytables
+   - pandas
+   - pip:
+     - pingouin
+     - bambi
