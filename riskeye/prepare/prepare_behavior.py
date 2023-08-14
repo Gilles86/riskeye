@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.io import loadmat
 
-from utils import get_all_subject_ids
+from riskeye.utils.data import get_all_subject_ids
 import os
 import os.path as op
 import re
@@ -43,11 +43,11 @@ def load_subject(subject, root_folder='/data'):
     for fn in fns:
         df.append(load_behavior(fn))
         info = reg.match(fn).groupdict()
-        keys.append((int(subject), int(info['run']), int(info['task']), int(info['block'])))
+        keys.append((f'{int(subject):02d}', int(info['run']), int(info['task']), int(info['block'])))
 
     df = pd.concat(df, keys=keys, names=['subject', 'run', 'exptype', 'block']).droplevel(-1)
-    df['trial_nr'] = df.groupby(['subject', 'exptype']).cumcount() + 1
-    df.set_index('trial_nr', append=True, inplace=True)
+    df['trial'] = df.groupby(['subject', 'run', 'block']).cumcount() + 1
+    df.set_index('trial', append=True, inplace=True)
 
     df = df.rename(columns={'s1_perm':'n_safe', 's2_perm':'n_risky', 'stimOnset':'onset'})
     df['onset'] /= 1000.
@@ -55,14 +55,16 @@ def load_subject(subject, root_folder='/data'):
 
     df.reset_index(inplace=True)
     df['exptype'] = df['exptype'].map({2:'symbolic', 3:'non-symbolic'})
-    df.set_index(['subject', 'run', 'exptype', 'block', 'trial_nr'], inplace=True)
+    df.set_index(['subject', 'run', 'exptype', 'block', 'trial'], inplace=True)
 
     reset1 = df.reset == 1
-    df['n_left'] = df['n_risky'].where(reset1, df['n_safe'])
-    df['n_right'] = df['n_risky'].where(~reset1, df['n_safe'])
-    df['p_left'] = df['p_right'] = 0.55
-    df['p_left'] = df['p_left'].where(reset1, 1.0)
-    df['p_right'] = df['p_right'].where(~reset1, 1.0)
+
+    # When reset == 1, the sure bet is on the left
+    df['n_left'] = df['n_safe'].where(reset1, df['n_risky']) # ok
+    df['n_right'] = df['n_risky'].where(reset1, df['n_safe']) # ok
+    df['p_left'] = df['p_right'] = 1.0 # ok
+    df['p_left'] = df['p_left'].where(reset1, .55) # ok
+    df['p_right'] = df['p_right'].where(~reset1, .55) # ok
 
     df['chose_risky'] = (((df['leftRight'] == 1) & (df['reset'] == -1)) | ((df['leftRight'] == -1) & (df['reset'] == 1))).astype(float)
     df.loc[~np.in1d(df.leftRight, [-1, 1]), 'chose_risky'] = np.nan

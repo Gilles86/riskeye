@@ -1,6 +1,6 @@
 import argparse
-from bauer.models import RiskModel, RiskRegressionModel
-from riskeye.utils.data import get_all_behavior
+from bauer.models import RiskModel, RiskRegressionModel, FlexibleSDRiskRegressionModel
+from riskeye.utils.data import get_all_behavior, get_all_eyepos_info
 import os.path as op
 import os
 import arviz as az
@@ -15,7 +15,7 @@ def main(model_label, burnin=1000, samples=1000, bids_folder='/data/ds-riskeye')
     if not op.exists(target_folder):
         os.makedirs(target_folder)
 
-    target_accept = 0.8
+    target_accept = 0.9
 
     model = build_model(model_label, df)
     model.build_estimation_model()
@@ -29,19 +29,52 @@ def build_model(model_label, df):
          'n2_evidence_sd':'exptype', 'risky_prior_mu':'exptype', 'risky_prior_std':'exptype',
           'safe_prior_mu':'exptype', 'safe_prior_std':'exptype'},
          prior_estimate='full')
+    elif model_label == '2':
+        model = RiskRegressionModel(df, regressors={'n1_evidence_sd':'exptype',
+         'n2_evidence_sd':'exptype', 'risky_prior_mu':'exptype', 'risky_prior_std':'exptype',
+          'safe_prior_mu':'exptype', 'safe_prior_std':'exptype'},
+         prior_estimate='full')
+
+    elif model_label == 'flexible1':
+        model = FlexibleSDRiskRegressionModel(df, regressors={'n1_evidence_sd_poly0':'exptype',
+                                        'n1_evidence_sd_poly1':'exptype',
+                                        'n1_evidence_sd_poly2':'exptype',
+                                        'n1_evidence_sd_poly3':'exptype',
+                                        'n1_evidence_sd_poly4':'exptype',
+                                        'n2_evidence_sd_poly0':'exptype',
+                                        'n2_evidence_sd_poly1':'exptype',
+                                        'n2_evidence_sd_poly2':'exptype',
+                                        'n2_evidence_sd_poly3':'exptype',
+                                        'n2_evidence_sd_poly4':'exptype',}, 
+                                        prior_estimate='full', polynomial_order=5, bspline=True)
     else:
         raise Exception(f'Do not know model label {model_label}')
 
     return model
 
-def get_data(bids_folder='/data/ds-tmsrisk', model_label=None):
+def get_data(bids_folder='/data/ds-tmsrisk', model_label=None, exclude_outliers=True):
 
-    df = get_all_behavior(bids_folder=bids_folder)
+    df = get_all_behavior(bids_folder=bids_folder, exclude_outliers=exclude_outliers)
+
+    if model_label in ['1', 'flexible1']:
+        df['n1'], df['n2'] = df['n_left'], df['n_right']
+        df['p1'], df['p2'] = df['p_left'], df['p_right']
+        df['choice'] = df['leftRight'] == -1
+
+    if model_label in ['2']:
+        summarized_fixations = get_all_eyepos_info(source='eyepos', summarize=True)
+        df = df.join(summarized_fixations)
+
+
+    if model_label == '2':
+        df['n1'] = df['n_left'].where(df['first_saccade'] == 'left_option', df['n_right'])
+        df['p1'] = df['p_left'].where(df['first_saccade'] == 'left_option', df['p_right'])
+        df['n2'] = df['n_left'].where(df['first_saccade'] == 'right_option', df['n_right'])
+        df['p2'] = df['p_left'].where(df['first_saccade'] == 'right_option', df['p_right'])
+        df['chose_risky'] = df['chose_risky'].astype(bool)
+        df['choice'] = ((df['p2'] == 0.55) & df['chose_risky']) | ((df['p1'] == 0.55) & ~df['chose_risky'])
+
     df = df.reset_index('exptype')
-
-    df['n1'], df['n2'] = df['n_left'], df['n_right']
-    df['p1'], df['p2'] = df['p_left'], df['p_right']
-    df['choice'] = df['leftRight'] == 1
 
     return df
 

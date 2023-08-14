@@ -38,10 +38,20 @@ def get_fake_data(data, group=False):
     else:
         permutations = [data['subject'].unique()]
 
-    permutations += [np.array([0., 1.]), data['n_safe'].unique(), ['symbolic', 'non-symbolic'], [True, False]]
-    names=['subject', 'x', 'n_safe', 'exptype', 'risky_left']
+    permutations += [np.array([0., 1.]), data['n_safe'].unique(), ['symbolic', 'non-symbolic']]
+    names=['subject', 'x', 'n_safe', 'exptype']
+
+    for key in ['risky_left', 'risky_seen_first', 'risky_seen_last']:
+        if key in data.columns:
+            permutations.append([True, False])
+            names.append(key)
+
+    if 'risky_duration_prop' in data.columns:
+        permutations.append([0.0])
+        names.append('risky_duration_prop')
 
     fake_data = pd.MultiIndex.from_product(permutations, names=names).to_frame().reset_index(drop=True)
+    fake_data['Experiment'] = fake_data['exptype'].map({'symbolic':'Symbols', 'non-symbolic':'Coin clouds'})
 
     return fake_data
 
@@ -102,17 +112,14 @@ def plot_ppc(df, ppc, plot_type=1, var_name='ll_bernoulli', level='subject', col
         df['log(risky/safe)'] = df['bin(risky/safe)']
         ppc = ppc.reset_index('log(risky/safe)')
         ppc['log(risky/safe)'] = ppc.index.get_level_values('bin(risky/safe)')
+        ppc.set_index('log(risky/safe)', append=True, inplace=True)
 
     if plot_type == 0:
-        groupby = ['log(risky/safe)', 'stimulation_condition']
+        groupby = ['log(risky/safe)', 'Experiment']
     elif plot_type == 1:
-        groupby = ['risky_first', 'log(risky/safe)']
-    elif plot_type in [2, 4]:
-        groupby = ['risky_first', 'n_safe']
-    elif plot_type in [3, 5]:
-        groupby = ['risky_first', 'n_safe', 'log(risky/safe)']
-    elif plot_type in [6]:
-        groupby = ['risky_first', 'n_safe', 'exptype']
+        groupby = ['n_safe', 'Experiment']
+    elif plot_type in [2, 3]:
+        groupby = ['n_safe', 'log(risky/safe)', 'Experiment']
     else:
         raise NotImplementedError
 
@@ -140,7 +147,7 @@ def plot_ppc(df, ppc, plot_type=1, var_name='ll_bernoulli', level='subject', col
         else:
             ppc_summary['Log-ratio offer'] = ppc_summary['log(risky/safe)']
 
-    if plot_type in [2, 6]:
+    if plot_type in [1]:
         x = 'Safe offer'
     else:
         if level == 'group':
@@ -152,70 +159,44 @@ def plot_ppc(df, ppc, plot_type=1, var_name='ll_bernoulli', level='subject', col
     if plot_type in [0]:
         fac = sns.FacetGrid(ppc_summary,
                             col='subject' if level == 'subject' else None,
-                            hue='stimulation_condition',
+                            hue='Experiment',
                             col_wrap=col_wrap if level == 'subject' else None,
-                            hue_order=['vertex', 'ips'],
-                            palette=sns.color_palette()[2:],
+                            hue_order=['Symbols', 'Coin clouds'],
+                            palette=sns.color_palette()[-3:],
                             **kwargs)
 
 
-    elif plot_type in [1, 2]:
+    elif plot_type in [1]:
         fac = sns.FacetGrid(ppc_summary,
                             col='subject' if level == 'subject' else None,
-                            hue='Order',
+                            hue='Experiment',
                             col_wrap=col_wrap if level == 'subject' else None,
+                            hue_order=['Symbols', 'Coin clouds'],
+                            palette=sns.color_palette()[-3:],
                             **kwargs)
 
+    elif plot_type == 2:
+        fac = sns.FacetGrid(ppc_summary,
+                            row='subject' if level == 'subject' else None,
+                            col='Safe offer',
+                            hue='Experiment',
+                            hue_order=['Symbols', 'Coin clouds'],
+                            palette=sns.color_palette()[-3:],
+                            **kwargs)
     elif plot_type == 3:
         fac = sns.FacetGrid(ppc_summary,
-                            col='Safe offer',
-                            hue='Order',
                             row='subject' if level == 'subject' else None,
-                            **kwargs)
-    elif plot_type == 4:
-
-
-        if level == 'group':
-            rnp = df.groupby(['subject'] + groupby, group_keys=False).apply(get_rnp).to_frame('rnp')
-            rnp = rnp.groupby(groupby).mean()
-        else:
-            rnp = df.groupby(groupby, group_keys=False).apply(get_rnp).to_frame('rnp')
-
-        ppc_summary = ppc_summary.join(rnp)
-        fac = sns.FacetGrid(ppc_summary,
-                            hue='Order',
-                            col='subject' if level == 'subject' else None,
-                            col_wrap=col_wrap if level == 'subject' else None,
-                            **kwargs)
-
-        fac.map_dataframe(plot_prediction, x='Safe offer', y='p_predicted')
-        fac.map(plt.scatter, 'Safe offer', 'rnp')
-        fac.map(lambda *args, **kwargs: plt.axhline(.55, c='k', ls='--'))
-
-    elif plot_type == 5:
-        fac = sns.FacetGrid(ppc_summary,
-                            col='Order',
+                            col='Experiment',
                             hue='Safe offer',
-                            row='subject' if level == 'subject' else None,
-                            palette='coolwarm',
+                            col_order=['Symbols', 'Coin clouds'],
+                            palette=sns.color_palette('coolwarm', 6),
                             **kwargs)
-
-    elif plot_type == 6:
-        fac = sns.FacetGrid(ppc_summary,
-                            col='Order',
-                            hue='exptype',
-                            hue_order=['vertex', 'ips'],
-                            row='subject' if level == 'subject' else None,
-                            palette=sns.color_palette()[2:],
-                            **kwargs)
-
-
-    if plot_type in [0, 1,2,3, 5, 6]:
+    if plot_type in [0, 1,2, 3]:
         fac.map_dataframe(plot_prediction, x=x)
         fac.map(plt.scatter, x, 'Prop. chosen risky')
         fac.map(lambda *args, **kwargs: plt.axhline(.5, c='k', ls='--'))
 
-    if plot_type in [0, 1, 3, 5]:
+    if plot_type in [0, 2, 3]:
         if level == 'subject':
             fac.map(lambda *args, **kwargs: plt.axvline(np.log(1./.55), c='k', ls='--'))
         else:
