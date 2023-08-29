@@ -45,6 +45,12 @@ def build_model(model_label, df):
         model = bambi.Model('chose_risky ~ x*risky_duration_prop*exptype + (x*risky_duration_prop*exptype|subject)', df.reset_index(), link='probit', family='bernoulli')
     elif model_label == 'probit_prop_looked_at_risky':
         model = bambi.Model('chose_risky ~ x*risky_duration_prop*C(n_safe)*exptype + (x*risky_duration_prop*C(n_safe)*exptype|subject)', df.reset_index(), link='probit', family='bernoulli')
+    elif model_label == 'probit_prop_looked_at_risky_mediansplit':
+        model = bambi.Model('chose_risky ~ x*risky_duration_prop_split*C(n_safe)*exptype + (x*risky_duration_prop_split*C(n_safe)*exptype|subject)', df.reset_index(), link='probit', family='bernoulli')
+    elif model_label == 'probit_prop_looked_at_risky_mediansplit_simple':
+        model = bambi.Model('chose_risky ~ x*risky_duration_prop_split*exptype + (x*risky_duration_prop_split*exptype|subject)', df.reset_index(), link='probit', family='bernoulli')
+    elif model_label == 'probit_total_gaze_duration':
+        model = bambi.Model('chose_risky ~ x*risky_duration*exptype + x*safe_duration*exptype + (x*risky_duration*exptype + x*safe_duration*exptype|subject)', df.reset_index(), link='probit', family='bernoulli')
     else:
         raise Exception(f'Do not know model label {model_label}')
 
@@ -58,25 +64,16 @@ def get_data(model_label=None, bids_folder='/data/ds-riskeye'):
     if model_label in ['probit1', 'probit2']:
         df['risky_left'] = df['p_right'] == 1.0
 
+    if model_label in ['probit_prop_looked_at_risky_simple', 'probit_prop_looked_at_risky', 'probit_prop_looked_at_risky_mediansplit', 'probit_prop_looked_at_risky_mediansplit_simple', 'probit_total_gaze_duration']:
+        df = df[~df.isnull()['first_saccade']]
 
-    if np.any([model_label.startswith(e) for e in ['probit_risky_looked_at_first', 'probit_risky_looked_at_last', 'probit_prop_looked_at_risky']]):
-        fixations =  get_all_eyepos_info(source='saccades')
-        df = df.join(fixations)
+    if model_label in ['probit_prop_looked_at_risky_mediansplit', 'probit_prop_looked_at_risky_mediansplit_simple']:
+        df = df[~df['risky_duration_prop_split'].isnull()]
 
-        df = df[df['first_saccade'].notnull()]
+
+    if model_label in ['probit_total_gaze_duration']:
         df['risky_duration'] = df['left_duration'].where(df['p_left'] == 0.55, df['right_duration'])
         df['safe_duration'] = df['left_duration'].where(df['p_left'] == 1.0, df['right_duration'])
-        df['fixation_duration'] = df['risky_duration'] + df['safe_duration']
-
-        
-        if model_label.startswith('probit_risky_looked_at_first'):
-            df['risky_seen_first'] = ((df['first_saccade'] == 'left_option') & (df['p_left'] == 0.55)) | ((df['first_saccade'] == 'right_option') & (df['p_right'] == 0.55))
-        elif model_label.startswith('probit_risky_looked_at_last'):
-            df['risky_seen_last'] = ((df['last_saccade'] == 'left_option') & (df['p_left'] == 0.55)) | ((df['last_saccade'] == 'right_option') & (df['p_right'] == 0.55))
-        elif model_label.startswith('probit_prop_looked_at_risky'):
-            df['risky_duration_prop'] = df['risky_duration'] / df['fixation_duration']
-            df['safe_duration_prop'] = df['safe_duration'] / df['fixation_duration']
-            df['risky_duration_prop'] = df.groupby(['subject', 'exptype'], group_keys=False)['risky_duration_prop'].transform(lambda x: (x - x.mean()) / x.std())
 
     return df
 
