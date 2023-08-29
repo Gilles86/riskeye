@@ -38,12 +38,16 @@ def get_fake_data(data, group=False):
     else:
         permutations = [data['subject'].unique()]
 
-    permutations += [np.array([0., 1.]), data['n_safe'].unique(), ['symbolic', 'non-symbolic']]
-    names=['subject', 'x', 'n_safe', 'exptype']
+    permutations += [np.array([0., 1.]), data['n_safe'].unique(), ['symbolic', 'non-symbolic'], [0.0], [0.0]]
+    names=['subject', 'x', 'n_safe', 'exptype', 'risky_duration', 'safe_duration']
 
-    for key in ['risky_left', 'risky_seen_first', 'risky_seen_last']:
+    for key in ['risky_left', 'risky_seen_first', 'risky_seen_last', 'risky_duration_prop_split']:
         if key in data.columns:
-            permutations.append([True, False])
+            if key in ['risky_duration_prop_split']:
+                permutations.append(['low', 'high'])
+            else:
+                permutations.append([True, False])
+
             names.append(key)
 
     if 'risky_duration_prop' in data.columns:
@@ -120,6 +124,18 @@ def plot_ppc(df, ppc, plot_type=1, var_name='ll_bernoulli', level='subject', col
         groupby = ['n_safe', 'Experiment']
     elif plot_type in [2, 3]:
         groupby = ['n_safe', 'log(risky/safe)', 'Experiment']
+    elif plot_type in [4]:
+        groupby = ['seen_risky_first', 'log(risky/safe)', 'Experiment']
+    elif plot_type in [5]:
+        groupby = ['seen_risky_first', 'n_safe', 'Experiment']
+    elif plot_type in [6]:
+        groupby = ['risky_first', 'n_safe', 'Experiment']
+    elif plot_type in [7]:
+        groupby = ['risky_duration_prop_split', 'n_safe', 'Experiment']
+    elif plot_type in [8]:
+        groupby = ['risky_duration_prop_split', 'log(risky/safe)', 'Experiment']
+    elif plot_type in [9]:
+        groupby = ['risky_duration_prop_split', 'n_safe', 'log(risky/safe)', 'Experiment']
     else:
         raise NotImplementedError
 
@@ -136,6 +152,9 @@ def plot_ppc(df, ppc, plot_type=1, var_name='ll_bernoulli', level='subject', col
     if 'risky_first' in ppc_summary.columns:
         ppc_summary['Order'] = ppc_summary['risky_first'].map({True:'Risky first', False:'Safe first'})
 
+    if 'risky_duration_prop_split' in ppc_summary.columns:
+        ppc_summary['Risky dwell time'] = ppc_summary['risky_duration_prop_split'].map({'low':'Short', 'high':'Long'})
+
     if 'n_safe' in groupby:
         ppc_summary['Safe offer'] = ppc_summary['n_safe'].astype(int)
 
@@ -147,7 +166,7 @@ def plot_ppc(df, ppc, plot_type=1, var_name='ll_bernoulli', level='subject', col
         else:
             ppc_summary['Log-ratio offer'] = ppc_summary['log(risky/safe)']
 
-    if plot_type in [1]:
+    if plot_type in [1, 5, 6, 7]:
         x = 'Safe offer'
     else:
         if level == 'group':
@@ -179,8 +198,9 @@ def plot_ppc(df, ppc, plot_type=1, var_name='ll_bernoulli', level='subject', col
         fac = sns.FacetGrid(ppc_summary,
                             row='subject' if level == 'subject' else None,
                             col='Safe offer',
+                            col_wrap=col_wrap,
                             hue='Experiment',
-                            hue_order=['Symbols', 'Coin clouds'],
+                            col_order=['Coin clouds', 'Symbols'],
                             palette=sns.color_palette()[-3:],
                             **kwargs)
     elif plot_type == 3:
@@ -188,15 +208,55 @@ def plot_ppc(df, ppc, plot_type=1, var_name='ll_bernoulli', level='subject', col
                             row='subject' if level == 'subject' else None,
                             col='Experiment',
                             hue='Safe offer',
-                            col_order=['Symbols', 'Coin clouds'],
+                            col_order=['Coin clouds', 'Symbols'],
                             palette=sns.color_palette('coolwarm', 6),
                             **kwargs)
-    if plot_type in [0, 1,2, 3]:
+    elif plot_type == 4:
+        fac = sns.FacetGrid(ppc_summary,
+                            row='subject' if level == 'subject' else None,
+                            col='Experiment',
+                            hue='seen_risky_first',
+                            col_order=['Coin clouds', 'Symbols'],
+                            **kwargs)
+    elif plot_type == 5:
+        fac = sns.FacetGrid(ppc_summary,
+                            row='subject' if level == 'subject' else None,
+                            col='Experiment',
+                            hue='seen_risky_first',
+                            col_order=['Coin clouds', 'Symbols'],
+                            **kwargs)
+    elif plot_type == 6:
+        fac = sns.FacetGrid(ppc_summary,
+                            row='subject' if level == 'subject' else None,
+                            col='Experiment',
+                            hue='risky_first',
+                            col_order=['Coin clouds', 'Symbols'],
+                            hue_order=['Short', 'Long'],
+                            **kwargs)
+    elif plot_type in [7, 8]:
+        fac = sns.FacetGrid(ppc_summary,
+                            row='subject' if level == 'subject' else None,
+                            col='Experiment',
+                            hue='Risky dwell time',
+                            col_order=['Coin clouds', 'Symbols'],
+                            hue_order=['Short', 'Long'],
+                            **kwargs)
+    elif plot_type == 9:
+        if level == 'subject':
+            raise NotImplementedError
+
+        fac = sns.FacetGrid(ppc_summary,
+                            col='n_safe',
+                            row='Experiment',
+                            hue='Risky dwell time',
+                            col_order=['Coin clouds', 'Symbols'],
+                            **kwargs)
+    if plot_type in [0, 1,2, 3, 4, 5, 6, 7, 8, 9]:
         fac.map_dataframe(plot_prediction, x=x)
         fac.map(plt.scatter, x, 'Prop. chosen risky')
         fac.map(lambda *args, **kwargs: plt.axhline(.5, c='k', ls='--'))
 
-    if plot_type in [0, 2, 3]:
+    if plot_type in [0, 2, 3, 4, 8, 9]:
         if level == 'subject':
             fac.map(lambda *args, **kwargs: plt.axvline(np.log(1./.55), c='k', ls='--'))
         else:

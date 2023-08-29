@@ -18,11 +18,26 @@ def get_all_subject_ids():
 def get_all_subjects(bids_folder='/data/ds-riskeye'):
     return [Subject(e, bids_folder=bids_folder) for e in get_all_subject_ids()]
 
-def get_all_behavior(include_no_responses=False, bids_folder='/data/ds-riskeye', exclude_outliers=True):
+def get_all_behavior(include_no_responses=False, bids_folder='/data/ds-riskeye', exclude_outliers=True, include_eyedata=True, source='eyepos'):
     df = pd.concat([e.get_behavior(include_no_responses=include_no_responses) for e in get_all_subjects(bids_folder=bids_folder)])
 
     if exclude_outliers:
         df = remove_outliers(df)
+
+    if include_eyedata:
+        eyepos = get_all_eyepos_info(source=source, summarize=True, bids_folder=bids_folder)
+        df = df.join(eyepos)
+        df['seen_risky_first'] = True
+        df['seen_risky_first']= df['seen_risky_first'].where(((df['first_saccade'] == 'left_option') & (df['p_left'] == 0.55)) | ((df['first_saccade'] == 'right_option') & (df['p_right'] == 0.55)) , False)
+        df['seen_risky_first']= df['seen_risky_first'].where(~df['first_saccade'].isnull(), np.nan)
+
+        df['fixation_duration'] = df['left_duration'] + df['right_duration']
+        df['left_duration_prop'] = df['left_duration'] / df['fixation_duration']
+        df['right_duration_prop'] = df['right_duration'] / df['fixation_duration']
+
+        df['risky_duration'] = df['left_duration'].where(df['p_left'] == 0.55, df['right_duration'])
+        df['risky_duration_prop'] = df['risky_duration'] / df['fixation_duration']
+        df['risky_duration_prop_split'] = df.groupby(['subject', 'exptype', 'n_safe', 'n_risky'], group_keys=False)['risky_duration_prop'].apply(lambda x: (x > np.nanmedian(x)).map({True:'high', False:'low'}) if ((len(x) > 1) and (not x.isnull().any())) else pd.Series([np.nan]*len(x), index=x.index))
 
     return df
 
