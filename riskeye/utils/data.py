@@ -24,6 +24,7 @@ def get_all_behavior(include_no_responses=False, bids_folder='/data/ds-riskeye',
     if exclude_outliers:
         df = remove_outliers(df)
 
+
     return df
 
 def get_all_eyepos_info(source='eyepos', summarize=True, only_leftright=True, bids_folder='/data/ds-riskeye', exclude_outliers=True):
