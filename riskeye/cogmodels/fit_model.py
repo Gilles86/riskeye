@@ -143,6 +143,19 @@ def build_model(model_label, df):
                                         'evidence_sd_poly3':'exptype',
                                         'evidence_sd_poly4':'exptype', 'prior_mu':'exptype', 'prior_std':'exptype'}, 
                                         prior_estimate='shared', polynomial_order=5, bspline=True,  fit_seperate_evidence_sd=False)
+    elif model_label == 'flexible4':
+        model = FlexibleSDRiskRegressionModel(df, regressors={'n1_evidence_sd_poly0':'exptype',
+                                        'n1_evidence_sd_poly1':'exptype',
+                                        'n1_evidence_sd_poly2':'exptype',
+                                        'n1_evidence_sd_poly3':'exptype',
+                                        'n1_evidence_sd_poly4':'exptype',
+                                        'n2_evidence_sd_poly0':'exptype',
+                                        'n2_evidence_sd_poly1':'exptype',
+                                        'n2_evidence_sd_poly2':'exptype',
+                                        'n2_evidence_sd_poly3':'exptype',
+                                        'n2_evidence_sd_poly4':'exptype', 
+                                        'prior_mu':'exptype', 'prior_std':'exptype'}, 
+                                        prior_estimate='shared', polynomial_order=5, bspline=True,  fit_seperate_evidence_sd=True)
     else:
         raise Exception(f'Do not know model label {model_label}')
 
@@ -152,7 +165,7 @@ def get_data(bids_folder='/data/ds-riskeye', model_label=None, exclude_outliers=
 
     df = get_all_behavior(bids_folder=bids_folder, exclude_outliers=exclude_outliers)
 
-    if model_label in ['15', '16', '17']:
+    if model_label in ['15', '16', '17', 'flexible4']:
         df['n1'] = df['n_left'].where(df['p_left'] == 0.55, df['n_right'])
         df['p1'] = 0.55
         df['n2'] = df['n_left'].where(df['p_left'] == 1.0, df['n_right'])
