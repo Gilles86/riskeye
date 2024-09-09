@@ -54,6 +54,10 @@ def get_fake_data(data, group=False):
         permutations.append([0.0])
         names.append('risky_duration_prop')
 
+    if 'total_duration' in data.columns:
+        permutations.append([0.0])
+        names.append('total_duration')
+
     fake_data = pd.MultiIndex.from_product(permutations, names=names).to_frame().reset_index(drop=True)
     fake_data['Experiment'] = fake_data['exptype'].map({'symbolic':'Symbols', 'non-symbolic':'Coin clouds'})
 

@@ -111,7 +111,71 @@ def build_model(model_label, df):
         model = RiskRegressionModel(df, regressors={'evidence_mu_diff':'0+risky_duration_prop+risky_duration_prop:exptype',
                                                     'evidence_sd_diff':'0+risky_duration_prop+risky_duration_prop:exptype',
                                                     'n1_evidence_sd':'exptype', 'n2_evidence_sd':'exptype', 'prior_mu':'exptype', 'prior_std':'exptype'}, prior_estimate='shared')
+    elif model_label == '18':
+        model = RiskRegressionModel(df, regressors={
+                                                    'n1_evidence_mu':'0+left_duration + left_duration:exptype',
+                                                    'n2_evidence_mu':'0+right_duration + right_duration:exptype',
+                                                    'n1_evidence_sd':'exptype+left_duration+left_duration:exptype',
+                                                    'n2_evidence_sd':'exptype+right_duration+right_duration:exptype',
+                                                    'risky_prior_mu':'exptype', 'risky_prior_std':'exptype', 'safe_prior_mu':'exptype', 'safe_prior_std':'exptype'}, prior_estimate='full')
+    elif model_label == '19':
+        model = RiskRegressionModel(df, regressors={
+                                                    'n1_evidence_mu':'0+left_duration + left_duration:exptype',
+                                                    'n2_evidence_mu':'0+right_duration + right_duration:exptype',
+                                                    'n1_evidence_sd':'exptype',
+                                                    'n2_evidence_sd':'exptype',
+                                                    'risky_prior_mu':'exptype', 'risky_prior_std':'exptype', 'safe_prior_mu':'exptype', 'safe_prior_std':'exptype'}, prior_estimate='full')
+    elif model_label == '20':
+        model = RiskRegressionModel(df, regressors={
+                                                    'n1_evidence_mu':'0+risky_duration + risky_duration:exptype',
+                                                    'n2_evidence_mu':'0+safe_duration + safe_duration:exptype',
+                                                    'n1_evidence_sd':'exptype + risky_duration + risky_duration:exptype',
+                                                    'n2_evidence_sd':'exptype + safe_duration + safe_duration:exptype',
+                                                    'prior_mu':'exptype', 'prior_std':'exptype' }, prior_estimate='shared')
+    elif model_label == '21':
+        model = RiskRegressionModel(df, regressors={
+                                                    'n1_evidence_mu':'0+risky_duration_prop + risky_duration_prop:exptype',
+                                                    'n2_evidence_mu':'0+safe_duration_prop + safe_duration_prop:exptype',
+                                                    'n1_evidence_sd':'exptype + risky_duration_prop + risky_duration_prop:exptype',
+                                                    'n2_evidence_sd':'exptype + safe_duration_prop + safe_duration_prop:exptype',
+                                                    'prior_mu':'exptype', 'prior_std':'exptype' }, prior_estimate='shared')
 
+    elif model_label == '22':
+        full_model_str = 'exptype*left_duration_prop*saw_left_first'
+        model = RiskRegressionModel(df, regressors={'evidence_mu_diff':full_model_str + ' - 1',
+                                                    'n1_evidence_sd':full_model_str,
+                                                    'n2_evidence_sd':full_model_str,
+                                                    'risky_prior_mu':'exptype',
+                                                    'risky_prior_std':'exptype',
+                                                    'safe_prior_mu':'exptype',
+                                                    'safe_prior_std':'exptype',},
+                                                      prior_estimate='full')
+    elif model_label == '23':
+        full_model_str = 'exptype*risky_duration_prop*saw_risky_first11 - 1'
+        model = RiskRegressionModel(df, regressors={'evidence_mu_diff':'risky_duration_prop*saw_risky_first11 * exptype:saw_risky_first11 + exptype:risky_duration_prop + exptype:risky_duration_prop:saw_risky_first11 - 1',
+                                                    'n1_evidence_sd':full_model_str,
+                                                    'n2_evidence_sd':full_model_str,
+                                                    'risky_prior_mu':'exptype',
+                                                    'risky_prior_std':'exptype',
+                                                    'safe_prior_mu':'exptype',
+                                                    'safe_prior_std':'exptype',},
+                                                      prior_estimate='full')
+    elif model_label == '24':
+        full_model_str = 'exptype*left_duration_prop*saw_left_first'
+        model = RiskRegressionModel(df, regressors={'evidence_mu_diff':full_model_str + ' - 1',
+                                                    'n1_evidence_sd':full_model_str,
+                                                    'n2_evidence_sd':full_model_str,
+                                                    'prior_mu':'exptype',
+                                                    'prior_std':'exptype'},
+                                                      prior_estimate='shared')
+    elif model_label == '25':
+        full_model_str = 'exptype*risky_duration_prop*saw_risky_first11 - 1'
+        model = RiskRegressionModel(df, regressors={'evidence_mu_diff':'risky_duration_prop*saw_risky_first11 * exptype:saw_risky_first11 + exptype:risky_duration_prop + exptype:risky_duration_prop:saw_risky_first11 - 1',
+                                                    'n1_evidence_sd':full_model_str,
+                                                    'n2_evidence_sd':full_model_str,
+                                                    'prior_mu':'exptype',
+                                                    'prior_std':'exptype'},
+                                                      prior_estimate='shared')
     elif model_label == 'flexible1':
         model = FlexibleSDRiskRegressionModel(df, regressors={'n1_evidence_sd_poly0':'exptype',
                                         'n1_evidence_sd_poly1':'exptype',
@@ -165,7 +229,7 @@ def get_data(bids_folder='/data/ds-riskeye', model_label=None, exclude_outliers=
 
     df = get_all_behavior(bids_folder=bids_folder, exclude_outliers=exclude_outliers)
 
-    if model_label in ['15', '16', '17', 'flexible4']:
+    if model_label in ['15', '16', '17', 'flexible4', '20', '21', '23', '25']:
         df['n1'] = df['n_left'].where(df['p_left'] == 0.55, df['n_right'])
         df['p1'] = 0.55
         df['n2'] = df['n_left'].where(df['p_left'] == 1.0, df['n_right'])
@@ -191,13 +255,25 @@ def get_data(bids_folder='/data/ds-riskeye', model_label=None, exclude_outliers=
         df['first_saccade_left11'] = 1
         df['first_saccade_left11'] = df['first_saccade_left11'].where(df['first_saccade'] == 'left_option', -1)
 
-    if model_label in ['5', '7', '8', '11', '13']:
+    if model_label in ['5', '7', '8', '11', '13', '22', '24']:
         df['left_duration_prop'] = df.groupby(['subject', 'exptype'], group_keys=False)['left_duration_prop'].transform(lambda x: (x - x.mean()) / x.std())
         df['right_duration_prop'] = df.groupby(['subject', 'exptype'], group_keys=False)['right_duration_prop'].transform(lambda x: (x - x.mean()) / x.std())
 
-    if model_label in ['13']:
+    if model_label in ['13', '18', '19']:
         df['left_duration'] = df.groupby(['subject', 'exptype'], group_keys=False)['left_duration'].transform(lambda x: (x - x.mean()) / x.std())
         df['right_duration'] = df.groupby(['subject', 'exptype'], group_keys=False)['right_duration'].transform(lambda x: (x - x.mean()) / x.std())
+
+    if model_label in ['20']:
+        df['risky_duration'] = df.groupby(['subject', 'exptype'], group_keys=False)['risky_duration'].transform(lambda x: (x - x.mean()) / x.std())
+        df['safe_duration'] = df.groupby(['subject', 'exptype'], group_keys=False)['safe_duration'].transform(lambda x: (x - x.mean()) / x.std())
+
+    if model_label in ['21']:
+        df['safe_duration_prop'] = 1 - df['risky_duration_prop']
+        df['safe_duration_prop'] = df.groupby(['subject', 'exptype'], group_keys=False)['safe_duration_prop'].transform(lambda x: (x - x.mean()) / x.std())
+        df['risky_duration_prop'] = df.groupby(['subject', 'exptype'], group_keys=False)['risky_duration_prop'].transform(lambda x: (x - x.mean()) / x.std())
+
+    if model_label in ['22', '24']:
+        df['saw_left_first'] = df['first_saccade'] == 'left_option'
 
     if model_label in ['14']:
         df['risky_order_11'] = df['risky_first'].map({True:1, False:-1})
@@ -211,7 +287,12 @@ def get_data(bids_folder='/data/ds-riskeye', model_label=None, exclude_outliers=
         df['risky_duration_prop'] = df.groupby(['subject', 'exptype'], group_keys=False)['risky_duration_prop'].transform(lambda x: (x - x.mean()) / x.std())
         df['safe_duration_prop'] = df.groupby(['subject', 'exptype'], group_keys=False)['safe_duration_prop'].transform(lambda x: (x - x.mean()) / x.std())
 
-    if model_label in ['2', '3', '4', '5', '6', '7', '8', '8b', '9', '11', '13', '16', '17']:
+    if model_label in ['23', '25']:
+        df['saw_risky_first'] = ((df['first_saccade'] == 'left_option') & (df['p_left']==0.55)) | ((df['first_saccade'] == 'right_option') & (df['p_right']==.55))
+        df['risky_duration_prop'] = df.groupby(['subject', 'exptype'], group_keys=False)['risky_duration_prop'].transform(lambda x: (x - x.mean()) / x.std())
+        df['saw_risky_first11'] = df['saw_risky_first'].map({True:1, False:-1})
+
+    if model_label in ['2', '3', '4', '5', '6', '7', '8', '8b', '9', '11', '13', '16', '17', '18', '19', '20', '21', '22', '23', '24', '25']:
         df = df[~df['first_saccade'].isnull()]
 
 

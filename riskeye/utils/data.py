@@ -36,8 +36,13 @@ def get_all_behavior(include_no_responses=False, bids_folder='/data/ds-riskeye',
         df['right_duration_prop'] = df['right_duration'] / df['fixation_duration']
 
         df['risky_duration'] = df['left_duration'].where(df['p_left'] == 0.55, df['right_duration'])
+        df['safe_duration'] = df['left_duration'].where(df['p_left'] == 1.0, df['right_duration'])
         df['risky_duration_prop'] = df['risky_duration'] / df['fixation_duration']
         df['risky_duration_prop_split'] = df.groupby(['subject', 'exptype', 'n_safe', 'n_risky'], group_keys=False)['risky_duration_prop'].apply(lambda x: (x > np.nanmedian(x)).map({True:'high', False:'low'}) if ((len(x) > 1) and (not x.isnull().any())) else pd.Series([np.nan]*len(x), index=x.index))
+
+        df['risky_duration_split'] = df.groupby(['subject', 'exptype', 'n_safe', 'n_risky'], group_keys=False)['risky_duration'].apply(lambda x: (x > np.nanmedian(x)).map({True:'high', False:'low'}) if ((len(x) > 1) and (not x.isnull().any())) else pd.Series([np.nan]*len(x), index=x.index))
+        df['safe_duration_split'] = df.groupby(['subject', 'exptype', 'n_safe', 'n_risky'], group_keys=False)['safe_duration'].apply(lambda x: (x > np.nanmedian(x)).map({True:'high', False:'low'}) if ((len(x) > 1) and (not x.isnull().any())) else pd.Series([np.nan]*len(x), index=x.index))
+        df['total_duration_split'] = df.groupby(['subject', 'exptype', 'n_safe', 'n_risky'], group_keys=False)['fixation_duration'].apply(lambda x: (x > np.nanmedian(x)).map({True:'high', False:'low'}) if ((len(x) > 1) and (not x.isnull().any())) else pd.Series([np.nan]*len(x), index=x.index))
 
     return df
 
